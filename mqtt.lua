@@ -20,12 +20,17 @@ require "uloop"
 uloop.init()
 
 local loadc = require "loadc"
+
 mqtt = require("mosquitto")
 client = mqtt.new()
 
 local status
 local conn
 local conf = loadc.load();
+
+
+rserial=io.open("/dev/ttyS2","r")
+local contK = 0
 
 print(_VERSION)
 
@@ -142,6 +147,31 @@ local sub = {
 		-- print("Count: ", msg["status"])
 	end,
 }
+
+-------- Knock stuff ----------
+local timerCount
+function t()
+	print("time = " .. contK);
+	local mid = client:publish(conf["local_base_topic"] .. "knock", contK);
+	--print("mid = " .. mid)
+	contK = 0;
+end
+timerCount = uloop.timer(t)
+
+local timerWaitSer
+function t2()
+    chain=rserial:read();
+	if chain == "K0\r" then
+		timerCount:set(500)
+		contK = contK+1
+		print("K")
+	end
+    --print("got -> " .. ins.inspect(chain));
+	timerWaitSer:set(100)
+end
+timerWaitSer = uloop.timer(t2)
+timerWaitSer:set(100)
+-------- END Knock stuff ------
 
 
 --print("MQTT Connecting")
